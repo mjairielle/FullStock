@@ -1,6 +1,7 @@
 # FullStock: Intelligent Inventory Management
 
 COLLABORATOR: cuteszme
+CHECK-OUT OUR DEPLOYED APPLICATION IN RENDER: https://fullstock-l1pv.onrender.com/
 
 FullStock is a modern, web-based Inventory Management and Demand Forecasting System. Built with Python and Flask, it transitions businesses from reactive stock tracking to **proactive inventory intelligence** using data analytics and predictive machine learning.
 
