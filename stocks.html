@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Stock List — FullStock</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode"></script>
+</head>
+<body class="bg-[#f7f9fb] flex flex-row h-screen overflow-hidden">
+
+  {% include '_nav.html' %}
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col overflow-auto min-w-0">
+
+    <!-- Top Bar -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
+      <div>
+        <h1 class="text-[18px] font-semibold text-slate-900 leading-tight">Stock List</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Manage and monitor all SKUs</p>
+      </div>
+      <div class="flex items-center gap-2">
+        <button id="scanBtn"
+                class="flex items-center gap-2 px-3 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium rounded-md transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M3 9V5a2 2 0 0 1 2-2h4M3 15v4a2 2 0 0 0 2 2h4m10-16h4a2 2 0 0 1 2 2v4m0 10v4a2 2 0 0 1-2 2h-4"/>
+            <line x1="8" y1="12" x2="8" y2="12.01"/><line x1="12" y1="12" x2="16" y2="12"/>
+          </svg>
+          Scan Barcode
+        </button>
+        <a href="/add-item"
+           class="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold rounded-md transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          Add Item
+        </a>
+      </div>
+    </header>
+
+    <!-- Scanner Container -->
+    <div id="scanner-container" class="hidden mx-6 mt-4 bg-white border border-slate-200 rounded-lg p-4 max-w-md">
+      <div id="reader" style="width:100%;"></div>
+      <div class="text-center mt-2">
+        <button id="closeScanBtn" class="text-red-500 hover:text-red-700 text-sm font-medium transition-colors">Close Scanner</button>
+      </div>
+    </div>
+
+    <main class="flex-1 px-6 py-4 flex flex-col gap-4 min-h-0">
+
+      <!-- Filter / Search Toolbar -->
+      <div class="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center justify-between gap-4 flex-wrap shrink-0">
+        <div class="flex items-center gap-2 flex-wrap">
+
+          <!-- Filter Dropdown -->
+          <div class="relative">
+            <select id="filterStatus"
+                    class="appearance-none pl-8 pr-8 py-1.5 border border-slate-200 rounded-md text-sm text-slate-700 font-medium bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer">
+              <option value="">All Statuses</option>
+              <option value="critical">Critical</option>
+              <option value="warning">Warning</option>
+              <option value="info">Info</option>
+              <option value="ok">OK</option>
+            </select>
+            <svg class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
+            </svg>
+          </div>
+
+          <!-- Sort Dropdown -->
+          <div class="relative">
+            <select id="sortBy"
+                    class="appearance-none pl-8 pr-8 py-1.5 border border-slate-200 rounded-md text-sm text-slate-700 font-medium bg-white focus:outline-none focus:ring-2 focus:ring-slate-900 cursor-pointer">
+              <option value="severity">Sort: Severity</option>
+              <option value="name">Sort: Name A–Z</option>
+              <option value="qty_asc">Sort: Qty ↑</option>
+              <option value="qty_desc">Sort: Qty ↓</option>
+              <option value="cost_desc">Sort: Cost ↓</option>
+            </select>
+            <svg class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/>
+              <line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/>
+            </svg>
+          </div>
+
+        </div>
+
+        <div class="flex items-center gap-2 ml-auto">
+          <!-- Search -->
+          <div class="relative">
+            <input type="text" id="searchInput" placeholder="Search product, SKU, category…"
+                   class="pl-8 pr-3 py-1.5 border border-slate-200 rounded-md text-sm text-slate-700 w-64 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent bg-white">
+            <svg class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+            </svg>
+          </div>
+          <span id="rowCount" class="text-xs text-slate-400 font-medium whitespace-nowrap">Showing — items</span>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
+        <div class="overflow-auto flex-1">
+          <table class="min-w-full">
+            <thead class="sticky top-0 z-10">
+              <tr class="bg-slate-50 border-b border-slate-200">
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-slate-400">Product</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-slate-400">Category</th>
+                <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">Cost</th>
+                <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">Stock</th>
+                <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">ROP</th>
+                <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">Cover</th>
+                <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">Trend</th>
+                <th class="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">Status</th>
+                <th class="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="stocksBody" class="divide-y divide-slate-100">
+              <tr><td colspan="9" class="px-4 py-8 text-center text-sm text-slate-400">Loading…</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Bottom Stats Bar -->
+        <div class="border-t border-slate-200 bg-slate-50 px-4 py-2.5 flex items-center gap-6 shrink-0 flex-wrap">
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Total Valuation</span>
+            <span id="stat-valuation" class="text-sm font-bold text-slate-900 tabular-nums">—</span>
+          </div>
+          <div class="w-px h-4 bg-slate-200"></div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Low Stock SKUs</span>
+            <span id="stat-low" class="text-sm font-bold text-red-600 tabular-nums">—</span>
+          </div>
+          <div class="w-px h-4 bg-slate-200"></div>
+          <div class="flex items-center gap-1.5">
+            <span class="text-[11px] font-bold uppercase tracking-widest text-slate-400">Total SKUs</span>
+            <span id="stat-total" class="text-sm font-bold text-slate-900 tabular-nums">—</span>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <!-- Edit Modal -->
+  <div id="editModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+    <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onclick="closeEditModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md mx-4">
+      <div class="px-6 pt-6 pb-4">
+        <div class="flex items-center justify-between mb-5">
+          <h3 class="text-[16px] font-semibold text-slate-900" id="modal-title">Edit SKU</h3>
+          <button onclick="closeEditModal()" class="text-slate-400 hover:text-slate-600 transition-colors">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+        <input type="hidden" id="edit_sku_id">
+        <div class="space-y-4">
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Product Name</label>
+            <input type="text" id="edit_product_name"
+                   class="block w-full border border-slate-200 rounded-md py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent">
+          </div>
+          <div>
+            <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Category</label>
+            <input type="text" id="edit_category"
+                   class="block w-full border border-slate-200 rounded-md py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent">
+          </div>
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Unit Cost ($)</label>
+              <input type="number" step="0.01" id="edit_unit_cost"
+                     class="block w-full border border-slate-200 rounded-md py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent tabular-nums">
+            </div>
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Qty On Hand</label>
+              <input type="number" id="edit_qty"
+                     class="block w-full border border-slate-200 rounded-md py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent tabular-nums">
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="px-6 pb-6 pt-2 flex gap-3 justify-end">
+        <button onclick="closeEditModal()"
+                class="px-4 py-2 border border-slate-200 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors">
+          Cancel
+        </button>
+        <button onclick="submitEdit()"
+                class="px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white rounded-md text-sm font-semibold transition-colors">
+          Save Changes
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allStocks = [];
+    let html5QrcodeScanner = null;
+
+    const SEV_ORDER = { critical: 0, warning: 1, info: 2, ok: 3 };
+
+    const SEV_BADGE = {
+      critical: `<span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700">Critical</span>`,
+      warning:  `<span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700">Warning</span>`,
+      info:     `<span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700">Info</span>`,
+      ok:       `<span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">OK</span>`
+    };
+
+    async function fetchStocks() {
+      try {
+        const res = await fetch('/api/stocks');
+        allStocks = await res.json();
+        applyFilters();
+      } catch (e) { console.error('Failed to fetch stocks', e); }
+    }
+
+    function applyFilters() {
+      const term   = document.getElementById('searchInput').value.toLowerCase();
+      const status = document.getElementById('filterStatus').value;
+      const sort   = document.getElementById('sortBy').value;
+
+      let filtered = allStocks.filter(s => {
+        const matchSearch = !term ||
+          (s.product_name || '').toLowerCase().includes(term) ||
+          (s.category || '').toLowerCase().includes(term) ||
+          (s.sku_id || '').toLowerCase().includes(term);
+        const matchStatus = !status || s.severity === status;
+        return matchSearch && matchStatus;
+      });
+
+      filtered.sort((a, b) => {
+        switch (sort) {
+          case 'name':      return (a.product_name || '').localeCompare(b.product_name || '');
+          case 'qty_asc':   return (a.qty_on_hand ?? 0) - (b.qty_on_hand ?? 0);
+          case 'qty_desc':  return (b.qty_on_hand ?? 0) - (a.qty_on_hand ?? 0);
+          case 'cost_desc': return (b.unit_cost ?? 0) - (a.unit_cost ?? 0);
+          default:          return (SEV_ORDER[a.severity] ?? 4) - (SEV_ORDER[b.severity] ?? 4);
+        }
+      });
+
+      renderStocks(filtered);
+    }
+
+    function renderStocks(stocks) {
+      const tbody = document.getElementById('stocksBody');
+
+      if (!stocks.length) {
+        tbody.innerHTML = `<tr><td colspan="9" class="px-4 py-8 text-center text-sm text-slate-400">No items found.</td></tr>`;
+      } else {
+        tbody.innerHTML = stocks.map((s, i) => {
+          const rowBg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40';
+          const trendColor = s.trend_14d > 0 ? 'text-emerald-600' : s.trend_14d < 0 ? 'text-red-500' : 'text-slate-400';
+          const trendPfx   = s.trend_14d > 0 ? '+' : '';
+          const enc = encodeURIComponent(JSON.stringify(s));
+          return `
+            <tr class="${rowBg} hover:bg-blue-50/20 transition-colors">
+              <td class="px-4 py-2.5">
+                <p class="text-sm font-medium text-slate-900">${sanitize(s.product_name)}</p>
+                <p class="text-[11px] text-slate-400">${sanitize(s.sku_id)}</p>
+              </td>
+              <td class="px-4 py-2.5 text-sm text-slate-500">${sanitize(s.category) || '—'}</td>
+              <td class="px-4 py-2.5 text-right text-sm tabular-nums text-slate-700">$${(s.unit_cost || 0).toFixed(2)}</td>
+              <td class="px-4 py-2.5 text-right text-sm font-bold tabular-nums text-slate-900">${s.qty_on_hand}</td>
+              <td class="px-4 py-2.5 text-right text-sm tabular-nums text-slate-500">${s.rop ?? 0}</td>
+              <td class="px-4 py-2.5 text-right text-sm tabular-nums text-slate-500">${(s.days_of_cover === undefined || s.days_of_cover === 999) ? '—' : s.days_of_cover + 'd'}</td>
+              <td class="px-4 py-2.5 text-right text-sm tabular-nums font-medium ${trendColor}">${trendPfx}${s.trend_14d !== undefined ? s.trend_14d + '%' : '—'}</td>
+              <td class="px-4 py-2.5 text-center">${SEV_BADGE[s.severity] ?? SEV_BADGE.info}</td>
+              <td class="px-4 py-2.5 text-center">
+                <div class="relative inline-block" data-kebab>
+                  <button onclick="toggleKebab(this)"
+                          class="w-7 h-7 flex items-center justify-center rounded-md text-slate-400 hover:text-slate-900 hover:bg-slate-100 transition-colors">
+                    <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                      <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+                    </svg>
+                  </button>
+                  <div class="kebab-menu hidden absolute right-0 top-full mt-1 z-30 bg-white border border-slate-200 rounded-lg shadow-lg w-36 py-1">
+                    <button onclick="promptSell('${s.sku_id}')"
+                            class="block w-full text-left px-4 py-2 text-sm text-indigo-700 hover:bg-indigo-50 transition-colors font-medium">Record Sale</button>
+                    <button onclick="promptRestock('${s.sku_id}')"
+                            class="block w-full text-left px-4 py-2 text-sm text-emerald-700 hover:bg-emerald-50 transition-colors font-medium">Restock</button>
+                    <button onclick="openEditModal('${enc}')"
+                            class="block w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-50 transition-colors font-medium">Edit</button>
+                    <div class="border-t border-slate-100 my-1"></div>
+                    <button onclick="deleteSku('${s.sku_id}')"
+                            class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition-colors font-medium">Delete</button>
+                  </div>
+                </div>
+              </td>
+            </tr>`;
+        }).join('');
+      }
+
+      // Update stats bar
+      const totalVal  = allStocks.reduce((acc, s) => acc + (s.qty_on_hand || 0) * (s.unit_cost || 0), 0);
+      const lowCnt    = allStocks.filter(s => s.severity === 'critical' || s.severity === 'warning').length;
+      document.getElementById('stat-valuation').textContent =
+        totalVal >= 1000000 ? '$' + (totalVal/1000000).toFixed(2) + 'M' :
+        totalVal >= 1000    ? '$' + (totalVal/1000).toFixed(1) + 'K' :
+        '$' + totalVal.toFixed(2);
+      document.getElementById('stat-low').textContent   = lowCnt;
+      document.getElementById('stat-total').textContent = allStocks.length;
+      document.getElementById('rowCount').textContent   = `Showing ${stocks.length} of ${allStocks.length} items`;
+    }
+
+    function toggleKebab(btn) {
+      const menu = btn.nextElementSibling;
+      document.querySelectorAll('.kebab-menu').forEach(m => { if (m !== menu) m.classList.add('hidden'); });
+      menu.classList.toggle('hidden');
+    }
+
+    document.addEventListener('click', e => {
+      if (!e.target.closest('[data-kebab]'))
+        document.querySelectorAll('.kebab-menu').forEach(m => m.classList.add('hidden'));
+    });
+
+    async function promptSell(skuId) {
+      document.querySelectorAll('.kebab-menu').forEach(m => m.classList.add('hidden'));
+      const qtyStr = prompt('Enter quantity sold:');
+      if (!qtyStr) return;
+      const qty = parseInt(qtyStr, 10);
+      if (isNaN(qty) || qty <= 0) { alert('Invalid quantity.'); return; }
+      try {
+        const res  = await fetch('/api/sku/sell', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sku_id: skuId, qty_to_sell: qty })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+            fetchStocks();
+        }
+        else alert('Failed to record sale: ' + (data.error || 'Unknown error'));
+      } catch { alert('Sale error'); }
+    }
+
+    async function promptRestock(skuId) {
+      document.querySelectorAll('.kebab-menu').forEach(m => m.classList.add('hidden'));
+      const qtyStr = prompt('Enter quantity to restock:');
+      if (!qtyStr) return;
+      const qty = parseInt(qtyStr, 10);
+      if (isNaN(qty) || qty <= 0) { alert('Invalid quantity.'); return; }
+      try {
+        const res  = await fetch('/api/sku/restock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sku_id: skuId, qty_to_add: qty })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') fetchStocks();
+        else alert('Failed to restock: ' + (data.error || 'Unknown error'));
+      } catch { alert('Restock error'); }
+    }
+
+    async function deleteSku(skuId) {
+      document.querySelectorAll('.kebab-menu').forEach(m => m.classList.add('hidden'));
+      if (!confirm('Delete SKU ' + skuId + '? This cannot be undone.')) return;
+      try {
+        const res  = await fetch('/api/sku/delete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sku_id: skuId })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') fetchStocks();
+        else alert('Delete failed: ' + data.error);
+      } catch { alert('Error deleting SKU'); }
+    }
+
+    function openEditModal(encodedStock) {
+      document.querySelectorAll('.kebab-menu').forEach(m => m.classList.add('hidden'));
+      const s = JSON.parse(decodeURIComponent(encodedStock));
+      document.getElementById('edit_sku_id').value       = s.sku_id;
+      document.getElementById('edit_product_name').value = s.product_name;
+      document.getElementById('edit_category').value     = s.category || '';
+      document.getElementById('edit_unit_cost').value    = s.unit_cost || 0;
+      document.getElementById('edit_qty').value          = s.qty_on_hand;
+      document.getElementById('editModal').classList.remove('hidden');
+    }
+
+    function closeEditModal() {
+      document.getElementById('editModal').classList.add('hidden');
+    }
+
+    async function submitEdit() {
+      const payload = {
+        sku_id:       document.getElementById('edit_sku_id').value,
+        product_name: document.getElementById('edit_product_name').value,
+        category:     document.getElementById('edit_category').value,
+        unit_cost:    parseFloat(document.getElementById('edit_unit_cost').value),
+        qty_on_hand:  parseInt(document.getElementById('edit_qty').value, 10)
+      };
+      try {
+        const res  = await fetch('/api/sku/update', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+        const data = await res.json();
+        if (data.status === 'ok') { closeEditModal(); fetchStocks(); }
+        else alert('Update failed: ' + data.error);
+      } catch { alert('Error updating SKU'); }
+    }
+
+    // Search + filter event listeners
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+    document.getElementById('filterStatus').addEventListener('change', applyFilters);
+    document.getElementById('sortBy').addEventListener('change', applyFilters);
+
+    // Barcode scanner
+    document.getElementById('scanBtn').addEventListener('click', () => {
+      document.getElementById('scanner-container').classList.remove('hidden');
+      if (!html5QrcodeScanner) {
+        html5QrcodeScanner = new Html5QrcodeScanner('reader', { fps: 10, qrbox: { width: 250, height: 250 } }, false);
+        html5QrcodeScanner.render(
+          (decodedText) => {
+            const input = document.getElementById('searchInput');
+            input.value = decodedText;
+            applyFilters();
+            document.getElementById('closeScanBtn').click();
+          },
+          () => {}
+        );
+      }
+    });
+
+    document.getElementById('closeScanBtn').addEventListener('click', () => {
+      document.getElementById('scanner-container').classList.add('hidden');
+      if (html5QrcodeScanner) { html5QrcodeScanner.clear(); html5QrcodeScanner = null; }
+    });
+
+    document.addEventListener('DOMContentLoaded', fetchStocks);
+  </script>
+
+</body>
+</html>

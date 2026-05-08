@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add Store — FullStock</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#f7f9fb] flex flex-row h-screen overflow-hidden">
+
+  {% include '_nav.html' %}
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col overflow-auto min-w-0">
+
+    <!-- Top Bar -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 shrink-0">
+      <h1 class="text-[18px] font-semibold text-slate-900 leading-tight">Add New Store</h1>
+      <p class="text-xs text-slate-400 mt-0.5">Create a new inventory location to manage</p>
+    </header>
+
+    <main class="flex-1 p-6 overflow-auto">
+      <div class="max-w-2xl mx-auto">
+        <div class="bg-white border border-slate-200 rounded-lg p-6">
+          <form action="/add-store" method="POST" class="space-y-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            
+            {% if error %}
+            <div class="mb-5 flex items-start gap-2.5 bg-red-50 border border-red-200 rounded-md px-3.5 py-3">
+              <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                <circle cx="12" cy="12" r="10"/>
+                <line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
+              </svg>
+              <p class="text-sm text-red-700 font-medium">{{ error }}</p>
+            </div>
+            {% endif %}
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Store Name</label>
+              <input type="text" name="store_name" required autofocus
+                     class="block w-full border border-slate-200 rounded-md py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                     placeholder="e.g. Downtown Warehouse">
+            </div>
+
+            <div>
+              <label class="block text-xs font-bold uppercase tracking-widest text-slate-400 mb-1.5">Location</label>
+              <input type="text" name="location" required
+                     class="block w-full border border-slate-200 rounded-md py-2 px-3 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent"
+                     placeholder="e.g. New York, NY">
+            </div>
+
+            <div class="pt-2">
+              <button type="submit"
+                      class="w-full bg-slate-900 hover:bg-slate-700 text-white font-semibold py-2.5 px-4 rounded-md text-sm transition-colors">
+                Create Store
+              </button>
+            </div>
+
+          </form>
+        </div>
+      </div>
+    </main>
+  </div>
+</body>
+</html>

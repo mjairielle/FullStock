@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dashboard — FullStock</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#f7f9fb] flex flex-row h-screen overflow-hidden">
+
+  {% include '_nav.html' %}
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col overflow-auto min-w-0">
+
+    <!-- Top Bar -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
+      <div>
+        <h1 class="text-[18px] font-semibold text-slate-900 leading-tight">Inventory Dashboard</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Live stock overview &amp; alerts</p>
+      </div>
+      <button id="refreshBtn"
+              class="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold rounded-md transition-colors">
+        <svg id="refreshIcon" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path d="M4 4v5h5M20 20v-5h-5M4 20l5-5M20 4l-5 5"/>
+        </svg>
+        Refresh
+      </button>
+    </header>
+
+    <main class="flex-1 p-6 space-y-6 overflow-auto">
+
+      <!-- KPI Cards -->
+      <section class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+
+        <div class="bg-white border border-slate-200 rounded-lg p-5">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Total SKUs</p>
+          <p class="text-3xl font-bold text-slate-900 tabular-nums" id="kpi-total-skus">—</p>
+          <p class="text-xs text-slate-400 mt-1">Tracked products</p>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-lg p-5">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Critical</p>
+          <div class="flex items-end gap-2">
+            <p class="text-3xl font-bold text-red-600 tabular-nums" id="kpi-critical">—</p>
+            <span class="text-xs font-semibold text-red-400 mb-1">SKUs</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Needs immediate reorder</p>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-lg p-5">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Warning</p>
+          <div class="flex items-end gap-2">
+            <p class="text-3xl font-bold text-amber-500 tabular-nums" id="kpi-warning">—</p>
+            <span class="text-xs font-semibold text-amber-400 mb-1">SKUs</span>
+          </div>
+          <p class="text-xs text-slate-400 mt-1">Monitor closely</p>
+        </div>
+
+        <div class="bg-white border border-slate-200 rounded-lg p-5">
+          <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-2">Stock Value</p>
+          <p class="text-3xl font-bold text-slate-900 tabular-nums" id="kpi-stock-value">—</p>
+          <p class="text-xs text-slate-400 mt-1">Total inventory at cost</p>
+        </div>
+
+      </section>
+
+      <!-- Content Grid: Alerts Table + Low Stock Panel -->
+      <section class="grid grid-cols-1 xl:grid-cols-3 gap-6">
+
+        <!-- Alerts Table (2/3 width) -->
+        <div class="xl:col-span-2 bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h2 class="text-[15px] font-semibold text-slate-900">Stock Alerts</h2>
+              <p class="text-xs text-slate-400 mt-0.5">All SKUs sorted by severity</p>
+            </div>
+            <a href="/stocks" class="text-xs font-semibold text-slate-500 hover:text-slate-900 transition-colors">View all →</a>
+          </div>
+          <div class="overflow-auto flex-1">
+            <table class="min-w-full">
+              <thead>
+                <tr class="bg-slate-50 border-b border-slate-200">
+                  <th class="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-slate-400">Product</th>
+                  <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">Stock</th>
+                  <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">ROP</th>
+                  <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">Cover</th>
+                  <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">Trend</th>
+                  <th class="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">Status</th>
+                  <th class="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">Action</th>
+                </tr>
+              </thead>
+              <tbody id="alertsBody" class="divide-y divide-slate-100">
+                <tr>
+                  <td colspan="7" class="px-4 py-8 text-center text-sm text-slate-400">Loading…</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Low Stock Side Panel (1/3 width) -->
+        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex flex-col">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <h2 class="text-[15px] font-semibold text-slate-900">Low Stock Alerts</h2>
+            <span id="critical-badge" class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-red-100 text-red-700">0 Critical</span>
+          </div>
+          <div id="lowStockPanel" class="flex-1 overflow-auto divide-y divide-slate-100">
+            <div class="px-5 py-8 text-center text-sm text-slate-400">Loading…</div>
+          </div>
+          <div class="px-5 py-3 border-t border-slate-100">
+            <a href="/stocks" class="block w-full text-center text-xs font-bold uppercase tracking-widest text-slate-500 hover:text-slate-900 transition-colors py-1">View all alerts →</a>
+          </div>
+        </div>
+
+      </section>
+
+      <!-- Footer timestamp -->
+      <p class="text-xs text-slate-400 text-right">
+        Last refreshed: <span id="lastRefreshed" class="font-medium text-slate-500">—</span>
+      </p>
+
+    </main>
+  </div><!-- /main content -->
+
+  <script>
+    function fmt(ts) { return new Date(ts).toLocaleString(); }
+
+    const SEV_BADGE = {
+      critical: `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700">Critical</span>`,
+      warning:  `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700">Warning</span>`,
+      info:     `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700">Info</span>`,
+      ok:       `<span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">OK</span>`
+    };
+
+    function renderCards(s) {
+      document.getElementById('kpi-total-skus').textContent  = (s.total_skus ?? 0).toLocaleString();
+      document.getElementById('kpi-critical').textContent    = (s.critical ?? 0).toLocaleString();
+      document.getElementById('kpi-warning').textContent     = (s.warning ?? 0).toLocaleString();
+      const val = s.total_stock_value ?? 0;
+      document.getElementById('kpi-stock-value').textContent =
+        val >= 1000000 ? '$' + (val/1000000).toFixed(2) + 'M' :
+        val >= 1000    ? '$' + (val/1000).toFixed(1) + 'K' :
+        '$' + val.toFixed(2);
+      document.getElementById('critical-badge').textContent = (s.critical ?? 0) + ' Critical';
+    }
+
+    function renderTable(alerts) {
+      const tbody = document.getElementById('alertsBody');
+      if (!alerts.length) {
+        tbody.innerHTML = `<tr><td colspan="7" class="px-4 py-8 text-center text-sm text-slate-400">No alerts found.</td></tr>`;
+        return;
+      }
+      // Sort: critical → warning → info → ok
+      const order = { critical: 0, warning: 1, info: 2, ok: 3 };
+      alerts.sort((a, b) => (order[a.severity] ?? 4) - (order[b.severity] ?? 4));
+
+      tbody.innerHTML = alerts.map((a, i) => {
+        const rowBg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50';
+        const trendColor = a.trend_14d > 0 ? 'text-emerald-600' : a.trend_14d < 0 ? 'text-red-500' : 'text-slate-400';
+        const trendPfx   = a.trend_14d > 0 ? '+' : '';
+        const buyCell = a.should_buy
+          ? `<button onclick="quickRestock('${a.sku_id}', ${a.qty_to_buy})" class="text-[11px] font-semibold bg-emerald-50 text-emerald-700 px-2.5 py-1 rounded-full hover:bg-emerald-100 transition-colors shadow-sm border border-emerald-200 whitespace-nowrap">Buy ${a.qty_to_buy}</button>`
+          : `<span class="text-[11px] font-semibold text-slate-400">Hold</span>`;
+        return `
+          <tr class="${rowBg} hover:bg-blue-50/30 transition-colors">
+            <td class="px-4 py-2.5">
+              <p class="text-sm font-medium text-slate-900">${sanitize(a.product_name)}${a.low_demand_flag ? ' <span title="Low demand" class="text-[10px]">📉</span>' : ''}</p>
+            </td>
+            <td class="px-4 py-2.5 text-right text-sm font-semibold tabular-nums text-slate-800">${a.qty_on_hand ?? 0}</td>
+            <td class="px-4 py-2.5 text-right text-sm tabular-nums text-slate-500">${a.rop ?? 0}</td>
+            <td class="px-4 py-2.5 text-right text-sm tabular-nums text-slate-500">${(a.days_of_cover === undefined || a.days_of_cover === 999) ? '—' : a.days_of_cover + 'd'}</td>
+            <td class="px-4 py-2.5 text-right text-sm tabular-nums font-medium ${trendColor}">${trendPfx}${a.trend_14d !== undefined ? a.trend_14d + '%' : '—'}</td>
+            <td class="px-4 py-2.5 text-center">${SEV_BADGE[a.severity] ?? SEV_BADGE.info}</td>
+            <td class="px-4 py-2.5 text-center">${buyCell}</td>
+          </tr>`;
+      }).join('');
+      document.getElementById('lastRefreshed').textContent = fmt(new Date());
+    }
+
+    async function quickRestock(skuId, qty) {
+      if (!confirm(`Are you sure you want to restock ${qty} units of this item?`)) return;
+      try {
+        const res = await fetch('/api/sku/restock', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sku_id: skuId, qty_to_add: qty })
+        });
+        const data = await res.json();
+        if (data.status === 'ok') {
+          fetchAndRender();
+        } else {
+          alert('Failed to restock: ' + (data.error || 'Unknown error'));
+        }
+      } catch (err) {
+        alert('Error: ' + err.message);
+      }
+    }
+
+    function renderLowStockPanel(alerts) {
+      const panel = document.getElementById('lowStockPanel');
+      const actionable = alerts.filter(a => a.severity === 'critical' || a.severity === 'warning')
+                                .slice(0, 12);
+      if (!actionable.length) {
+        panel.innerHTML = `<div class="px-5 py-8 text-center text-sm text-emerald-600 font-medium">All stock levels healthy ✓</div>`;
+        return;
+      }
+      panel.innerHTML = actionable.map(a => {
+        const isC = a.severity === 'critical';
+        const qtyColor = isC ? 'text-red-600' : 'text-amber-600';
+        const qtyBg    = isC ? 'bg-red-50' : 'bg-amber-50';
+        return `
+          <div class="px-5 py-3 flex items-center justify-between gap-3 hover:bg-slate-50 transition-colors">
+            <div class="min-w-0">
+              <p class="text-sm font-medium text-slate-900 truncate">${sanitize(a.product_name)}</p>
+              <p class="text-xs text-slate-400 tabular-nums">${a.qty_on_hand} left · ROP ${a.rop ?? 0}</p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+              <span class="text-xs font-bold px-1.5 py-0.5 rounded ${qtyBg} ${qtyColor} tabular-nums">${a.qty_on_hand}</span>
+              <a href="/stocks" class="text-xs font-semibold text-slate-400 hover:text-slate-900 transition-colors whitespace-nowrap">Reorder ›</a>
+            </div>
+          </div>`;
+      }).join('');
+    }
+
+    async function fetchAndRender() {
+      try {
+        const [summaryRes, alertsRes] = await Promise.all([
+          fetch('/api/summary'),
+          fetch('/api/alerts')
+        ]);
+        const summary = await summaryRes.json();
+        const alerts  = await alertsRes.json();
+        renderCards(summary);
+        renderTable(alerts);
+        renderLowStockPanel(alerts);
+      } catch (e) { console.error('Fetch error', e); }
+    }
+
+    async function onRefresh() {
+      const btn  = document.getElementById('refreshBtn');
+      const icon = document.getElementById('refreshIcon');
+      btn.disabled = true;
+      btn.classList.add('opacity-60');
+      icon.classList.add('animate-spin');
+      try {
+        await fetch('/api/refresh', { method: 'POST' });
+        await fetchAndRender();
+      } catch (e) { console.error('Refresh error', e); }
+      finally {
+        btn.disabled = false;
+        btn.classList.remove('opacity-60');
+        icon.classList.remove('animate-spin');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      fetchAndRender();
+      document.getElementById('refreshBtn').addEventListener('click', onRefresh);
+      setInterval(onRefresh, 5 * 60 * 1000);
+    });
+  </script>
+
+</body>
+</html>

@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Audit Log — FullStock</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-[#f7f9fb] flex flex-row h-screen overflow-hidden">
+
+  {% include '_nav.html' %}
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col overflow-auto min-w-0">
+
+    <!-- Top Bar -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
+      <div>
+        <h1 class="text-[18px] font-semibold text-slate-900 leading-tight">Audit Log</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Full history of all system actions</p>
+      </div>
+      <div class="flex items-center gap-2 text-xs text-slate-400 font-medium">
+        <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span id="log-count">{{ logs|length }} entries</span>
+      </div>
+    </header>
+
+    <main class="flex-1 px-6 py-4 flex flex-col gap-4 min-h-0">
+
+      <!-- Filter Tabs + Search -->
+      <div class="bg-white border border-slate-200 rounded-lg px-4 py-3 flex items-center justify-between gap-4 flex-wrap shrink-0">
+
+        <!-- Action Filter Tabs -->
+        <div class="flex items-center gap-1 flex-wrap">
+          <button data-filter="ALL" onclick="setFilter('ALL')"
+                  class="filter-tab px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors bg-slate-900 text-white">
+            All
+          </button>
+          <button data-filter="LOGIN" onclick="setFilter('LOGIN')"
+                  class="filter-tab px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors text-slate-500 hover:bg-slate-50 border border-slate-200">
+            Login
+          </button>
+          <button data-filter="LOGOUT" onclick="setFilter('LOGOUT')"
+                  class="filter-tab px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors text-slate-500 hover:bg-slate-50 border border-slate-200">
+            Logout
+          </button>
+          <button data-filter="CREATE_SKU" onclick="setFilter('CREATE_SKU')"
+                  class="filter-tab px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors text-slate-500 hover:bg-slate-50 border border-slate-200">
+            Create
+          </button>
+          <button data-filter="UPDATE_SKU" onclick="setFilter('UPDATE_SKU')"
+                  class="filter-tab px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors text-slate-500 hover:bg-slate-50 border border-slate-200">
+            Update
+          </button>
+          <button data-filter="RESTOCK_SKU" onclick="setFilter('RESTOCK_SKU')"
+                  class="filter-tab px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors text-slate-500 hover:bg-slate-50 border border-slate-200">
+            Restock
+          </button>
+          <button data-filter="DELETE_SKU" onclick="setFilter('DELETE_SKU')"
+                  class="filter-tab px-3 py-1.5 rounded-md text-xs font-bold uppercase tracking-widest transition-colors text-slate-500 hover:bg-slate-50 border border-slate-200">
+            Delete
+          </button>
+        </div>
+
+        <!-- Search -->
+        <div class="relative ml-auto">
+          <input type="text" id="auditSearch" placeholder="Search user or details…"
+                 class="pl-8 pr-3 py-1.5 border border-slate-200 rounded-md text-sm text-slate-700 w-56 focus:outline-none focus:ring-2 focus:ring-slate-900 bg-white">
+          <svg class="absolute left-2.5 top-2 w-3.5 h-3.5 text-slate-400 pointer-events-none" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Table -->
+      <div class="bg-white border border-slate-200 rounded-lg overflow-hidden flex-1 flex flex-col min-h-0">
+        <div class="overflow-auto flex-1">
+          <table class="min-w-full">
+            <thead class="sticky top-0 z-10">
+              <tr class="bg-slate-50 border-b border-slate-200">
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-slate-400">Timestamp</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-slate-400">User</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-slate-400">Action</th>
+                <th class="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-slate-400">Details</th>
+              </tr>
+            </thead>
+            <tbody id="auditBody" class="divide-y divide-slate-100">
+              {% set ns = namespace(count=0) %}
+              {% for log in logs|reverse %}
+              {% set ns.count = ns.count + 1 %}
+              <tr class="audit-row {{ 'bg-white' if ns.count % 2 == 1 else 'bg-slate-50/40' }} hover:bg-blue-50/20 transition-colors"
+                  data-action="{{ log.action }}"
+                  data-user="{{ log.username or log.user_id }}"
+                  data-details="{{ log.details }}">
+                <td class="px-4 py-2.5 whitespace-nowrap text-sm tabular-nums text-slate-400">{{ log.timestamp }}</td>
+                <td class="px-4 py-2.5 whitespace-nowrap">
+                  <div class="flex items-center gap-2">
+                    <div class="w-6 h-6 bg-slate-200 rounded-full flex items-center justify-center shrink-0">
+                      <span class="text-[10px] font-bold text-slate-600">{{ (log.username or log.user_id or 'U')[0].upper() }}</span>
+                    </div>
+                    <span class="text-sm font-medium text-slate-900">{{ log.username or log.user_id }}</span>
+                  </div>
+                </td>
+                <td class="px-4 py-2.5 whitespace-nowrap">
+                  {% set action = log.action %}
+                  {% if action == 'LOGIN' %}
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-blue-50 text-blue-700">Login</span>
+                  {% elif action == 'LOGOUT' %}
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">Logout</span>
+                  {% elif action == 'CREATE_SKU' %}
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-50 text-emerald-700">Create</span>
+                  {% elif action == 'UPDATE_SKU' %}
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-amber-50 text-amber-700">Update</span>
+                  {% elif action == 'RESTOCK_SKU' %}
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-cyan-50 text-cyan-700">Restock</span>
+                  {% elif action == 'DELETE_SKU' %}
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-red-50 text-red-700">Delete</span>
+                  {% else %}
+                    <span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-semibold bg-slate-100 text-slate-600">{{ log.action }}</span>
+                  {% endif %}
+                </td>
+                <td class="px-4 py-2.5 text-sm text-slate-500 max-w-md truncate">{{ log.details }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="px-4 py-8 text-center text-sm text-slate-400">No audit logs found.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+
+        <!-- Pagination Footer -->
+        <div class="border-t border-slate-200 bg-slate-50 px-4 py-2.5 flex items-center justify-between shrink-0">
+          <span id="paginationInfo" class="text-xs text-slate-400 font-medium">Showing — entries</span>
+          <div class="flex items-center gap-1">
+            <button onclick="prevPage()" id="prevBtn"
+                    class="px-2.5 py-1 text-xs font-semibold text-slate-500 border border-slate-200 rounded-md hover:bg-white disabled:opacity-40 transition-colors"
+                    disabled>← Prev</button>
+            <span id="pageIndicator" class="px-3 py-1 text-xs font-bold text-slate-700">Page 1</span>
+            <button onclick="nextPage()" id="nextBtn"
+                    class="px-2.5 py-1 text-xs font-semibold text-slate-500 border border-slate-200 rounded-md hover:bg-white disabled:opacity-40 transition-colors">
+              Next →
+            </button>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    const PAGE_SIZE = 25;
+    let currentFilter = 'ALL';
+    let currentPage   = 1;
+
+    function getVisibleRows() {
+      const term = document.getElementById('auditSearch').value.toLowerCase();
+      return [...document.querySelectorAll('.audit-row')].filter(row => {
+        const action  = row.dataset.action || '';
+        const user    = row.dataset.user || '';
+        const details = row.dataset.details || '';
+        const matchFilter = currentFilter === 'ALL' || action === currentFilter;
+        const matchSearch = !term ||
+          user.toLowerCase().includes(term) ||
+          details.toLowerCase().includes(term) ||
+          action.toLowerCase().includes(term);
+        return matchFilter && matchSearch;
+      });
+    }
+
+    function renderPagination() {
+      const rows      = getVisibleRows();
+      const total     = rows.length;
+      const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+      currentPage     = Math.min(currentPage, totalPages);
+      const start     = (currentPage - 1) * PAGE_SIZE;
+      const end       = Math.min(start + PAGE_SIZE, total);
+
+      // Show/hide rows
+      [...document.querySelectorAll('.audit-row')].forEach(r => r.style.display = 'none');
+      rows.slice(start, end).forEach(r => r.style.display = '');
+
+      // Update re-stripe
+      rows.slice(start, end).forEach((r, i) => {
+        r.classList.toggle('bg-white',          i % 2 === 0);
+        r.classList.toggle('bg-slate-50/40',    i % 2 !== 0);
+      });
+
+      document.getElementById('paginationInfo').textContent =
+        total === 0 ? 'No entries found' : `Showing ${start + 1}–${end} of ${total} entries`;
+      document.getElementById('pageIndicator').textContent = `Page ${currentPage} of ${totalPages}`;
+      document.getElementById('prevBtn').disabled = currentPage <= 1;
+      document.getElementById('nextBtn').disabled = currentPage >= totalPages;
+    }
+
+    function setFilter(f) {
+      currentFilter = f;
+      currentPage   = 1;
+      document.querySelectorAll('.filter-tab').forEach(btn => {
+        const active = btn.dataset.filter === f;
+        btn.classList.toggle('bg-slate-900', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('border-transparent', active);
+        btn.classList.toggle('text-slate-500', !active);
+        btn.classList.toggle('border-slate-200', !active);
+        btn.classList.toggle('hover:bg-slate-50', !active);
+      });
+      renderPagination();
+    }
+
+    function prevPage() { if (currentPage > 1) { currentPage--; renderPagination(); } }
+    function nextPage() { currentPage++; renderPagination(); }
+
+    document.getElementById('auditSearch').addEventListener('input', () => {
+      currentPage = 1;
+      renderPagination();
+    });
+
+    document.addEventListener('DOMContentLoaded', renderPagination);
+  </script>
+
+</body>
+</html>

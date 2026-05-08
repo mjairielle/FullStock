@@ -1,0 +1,546 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Analytics — FullStock</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+
+<body class="bg-[#f7f9fb] flex flex-row h-screen overflow-hidden">
+
+  {% include '_nav.html' %}
+
+  <!-- Main Content -->
+  <div class="flex-1 flex flex-col overflow-auto min-w-0">
+
+    <!-- Top Bar -->
+    <header class="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between shrink-0">
+      <div>
+        <h1 class="text-[18px] font-semibold text-slate-900 leading-tight">Analytics &amp; Insights</h1>
+        <p class="text-xs text-slate-400 mt-0.5">Last 30 days · updated on refresh</p>
+      </div>
+      <div id="header-controls" class="hidden flex items-center gap-2">
+        <div class="flex items-center gap-1 border border-slate-200 rounded-md overflow-hidden text-xs font-semibold">
+          <button data-period="7" onclick="setPeriod(7)"
+            class="period-btn px-3 py-1.5 text-slate-500 hover:bg-slate-50 transition-colors">7d</button>
+          <button data-period="30" onclick="setPeriod(30)"
+            class="period-btn px-3 py-1.5 bg-slate-900 text-white">30d</button>
+          <button data-period="90" onclick="setPeriod(90)"
+            class="period-btn px-3 py-1.5 text-slate-500 hover:bg-slate-50 transition-colors">90d</button>
+        </div>
+        <button onclick="exportReport()"
+          class="flex items-center gap-2 px-4 py-2 bg-slate-900 hover:bg-slate-700 text-white text-sm font-semibold rounded-md transition-colors">
+          <svg class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+          Export Report
+        </button>
+      </div>
+    </header>
+    <!-- Tabs Header -->
+    <div class="px-6 border-b border-slate-200 bg-white shrink-0">
+      <nav class="-mb-px flex space-x-6">
+        <button onclick="switchTab('inventory')" id="tab-btn-inventory"
+          class="whitespace-nowrap pb-3 pt-4 px-1 border-b-2 border-slate-900 font-semibold text-sm text-slate-900">Inventory
+          Control</button>
+        <button onclick="switchTab('overview')" id="tab-btn-overview"
+          class="whitespace-nowrap pb-3 pt-4 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300">Sales
+          & Demand Prediction</button>
+      </nav>
+    </div>
+
+    <main class="flex-1 p-6 overflow-auto">
+
+      <!-- TAB: Overview -->
+      <div id="tab-overview" class="hidden space-y-5">
+
+        <!-- Row 1: Sales Chart + Stock Risk Card -->
+        <div class="grid grid-cols-1 xl:grid-cols-3 gap-5">
+
+          <!-- Sales Chart (2/3) -->
+          <div class="xl:col-span-2 bg-white border border-slate-200 rounded-lg p-5">
+            <div class="flex items-center justify-between mb-4">
+              <div>
+                <h2 class="text-[15px] font-semibold text-slate-900">Sales Volume</h2>
+                <p class="text-xs text-slate-400 mt-0.5">Total units sold per day</p>
+              </div>
+              <div class="flex items-center gap-4 text-[11px] font-semibold uppercase tracking-widest text-slate-400">
+                <span class="flex items-center gap-1.5">
+                  <span class="inline-block w-3 h-3 rounded-sm bg-slate-900"></span>Units Sold
+                </span>
+              </div>
+            </div>
+            <div class="relative h-56">
+              <canvas id="salesChart"></canvas>
+            </div>
+          </div>
+
+          <!-- Stock Out Risks Card (1/3) -->
+          <div class="flex flex-col gap-5">
+            <!-- Dark KPI card -->
+            <div class="bg-slate-900 border border-slate-800 rounded-lg p-5 text-white flex-1">
+              <p class="text-[11px] font-bold uppercase tracking-widest text-slate-400 mb-3">Stock-Out Risks</p>
+              <p id="risk-count" class="text-5xl font-bold tabular-nums mb-1">—</p>
+              <div class="flex items-center gap-1.5 mt-2">
+                <svg class="w-3.5 h-3.5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                  stroke-width="2">
+                  <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
+                  <line x1="12" y1="9" x2="12" y2="13" />
+                  <line x1="12" y1="17" x2="12.01" y2="17" />
+                </svg>
+                <p class="text-xs text-red-400 font-semibold">Critical · Needs Immediate Reorder</p>
+              </div>
+              <a href="/dashboard"
+                class="mt-4 block w-full text-center border border-slate-700 hover:border-slate-500 text-slate-300 hover:text-white text-xs font-semibold py-2 rounded-md transition-colors">
+                View Alerts →
+              </a>
+            </div>
+          </div>
+
+        </div>
+
+        <!-- Row 2: Demand Forecasting -->
+        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+          <div class="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h2 class="text-[15px] font-semibold text-slate-900">Demand Forecasting</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Predicted sales for next 14 days</p>
+            </div>
+          </div>
+          <div class="overflow-auto max-h-56">
+            <ul id="forecastList" class="divide-y divide-slate-100">
+              <li class="px-5 py-4 text-center text-sm text-slate-400">Loading forecasts…</li>
+            </ul>
+          </div>
+        </div>
+
+        <!-- Row 3: ABC + Dead Stock -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
+
+          <!-- ABC Analysis -->
+          <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100">
+              <h2 class="text-[15px] font-semibold text-slate-900">ABC Classification</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Revenue impact over selected period</p>
+            </div>
+            <div class="overflow-auto max-h-64">
+              <table class="min-w-full">
+                <thead class="sticky top-0 bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th class="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-slate-400">SKU
+                    </th>
+                    <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                      Rev (30d)</th>
+                    <th class="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                      Class</th>
+                  </tr>
+                </thead>
+                <tbody id="abcBody" class="divide-y divide-slate-100">
+                  <tr>
+                    <td colspan="3" class="px-4 py-6 text-center text-sm text-slate-400">Loading…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          <!-- Dead Stock -->
+          <div class="bg-white border border-slate-200 rounded-lg overflow-hidden">
+            <div class="px-5 py-4 border-b border-slate-100">
+              <h2 class="text-[15px] font-semibold text-slate-900">Dead Stock</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Zero sales in last 30 days</p>
+            </div>
+            <div class="overflow-auto max-h-64">
+              <table class="min-w-full">
+                <thead class="sticky top-0 bg-slate-50 border-b border-slate-200">
+                  <tr>
+                    <th class="px-4 py-2.5 text-left text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                      Product</th>
+                    <th class="px-4 py-2.5 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                      Qty Stuck</th>
+                    <th class="px-4 py-2.5 text-right text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                      Capital Tied</th>
+                  </tr>
+                </thead>
+                <tbody id="deadBody" class="divide-y divide-slate-100">
+                  <tr>
+                    <td colspan="3" class="px-4 py-6 text-center text-sm text-slate-400">Loading…</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+        </div>
+
+      </div>
+
+      <!-- TAB: Inventory Control -->
+      <div id="tab-inventory" class="space-y-5">
+        <div class="bg-white border border-slate-200 rounded-lg p-5">
+          <div class="flex items-center justify-between mb-4">
+            <div>
+              <h2 class="text-[15px] font-semibold text-slate-900">Select Product</h2>
+              <p class="text-xs text-slate-400 mt-0.5">Choose an item to view its optimal order strategy</p>
+            </div>
+            <select id="sku-select" onchange="renderInventoryControl()"
+              class="border border-slate-200 rounded-md text-sm px-3 py-1.5 focus:ring-slate-900 focus:border-slate-900 bg-slate-50">
+              <option value="">Loading...</option>
+            </select>
+          </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+            <div class="bg-white border border-slate-200 rounded-lg p-5 text-center shadow-sm">
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">When to Order (ROP)</p>
+              <p id="inv-rop" class="text-3xl font-bold text-blue-600 tabular-nums">—</p>
+              <p class="text-xs text-slate-500 mt-2">Reorder when stock falls to this level</p>
+            </div>
+            <div class="bg-white border border-slate-200 rounded-lg p-5 text-center shadow-sm">
+              <p class="text-xs font-bold uppercase tracking-widest text-slate-500 mb-2">How Much to Order (EOQ)</p>
+              <p id="inv-eoq" class="text-3xl font-bold text-emerald-600 tabular-nums">—</p>
+              <p class="text-xs text-slate-500 mt-2">Optimal quantity to minimize costs</p>
+            </div>
+          </div>
+
+          <div>
+            <h2 class="text-[15px] font-semibold text-slate-900 mb-2">Inventory Depletion & Reorder Cycle</h2>
+            <div class="relative h-80 w-full">
+              <canvas id="sawtoothChart"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </main>
+  </div>
+
+  <script>
+    let salesChartInstance = null;
+    let currentPeriod = 30;
+
+    function setPeriod(p) {
+      currentPeriod = p;
+      document.querySelectorAll('.period-btn').forEach(btn => {
+        const active = parseInt(btn.dataset.period) === p;
+        btn.classList.toggle('bg-slate-900', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('text-slate-500', !active);
+        btn.classList.toggle('hover:bg-slate-50', !active);
+      });
+      loadSalesChart();
+    }
+
+    async function loadSalesChart() {
+      try {
+        const res = await fetch('/api/analytics/sales_history?period=' + currentPeriod);
+        const data = await res.json();
+        // Short label: MMM D
+        const labels = data.dates.map(d => {
+          const dt = new Date(d + 'T00:00:00');
+          return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        });
+        const ctx = document.getElementById('salesChart').getContext('2d');
+        if (salesChartInstance) salesChartInstance.destroy();
+        salesChartInstance = new Chart(ctx, {
+          type: 'bar',
+          data: {
+            labels,
+            datasets: [{
+              label: 'Units Sold',
+              data: data.quantities,
+              backgroundColor: '#0f172a',
+              borderRadius: 3,
+              borderSkipped: false
+            }]
+          },
+          options: {
+            animations: {
+              y: {
+                easing: 'easeOutQuart',
+                duration: 500,
+                from: (ctx) => ctx.chart.scales.y ? ctx.chart.scales.y.getPixelForValue(0) : 0
+              },
+              x: { duration: 0 }
+            },
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { display: false } },
+            scales: {
+              y: {
+                beginAtZero: true,
+                grid: { color: '#f1f5f9', borderDash: [3, 3] },
+                ticks: { color: '#94a3b8', font: { size: 11 } }
+              },
+              x: {
+                grid: { display: false },
+                ticks: {
+                  color: '#94a3b8',
+                  font: { size: 11 },
+                  maxTicksLimit: 10
+                }
+              }
+            }
+          }
+        });
+      } catch (e) { console.error('Chart error:', e); }
+    }
+
+    async function loadForecasts() {
+      try {
+        const res = await fetch('/api/analytics/forecast');
+        const data = await res.json();
+        const list = document.getElementById('forecastList');
+        if (!data.length) {
+          list.innerHTML = `<li class="px-5 py-4 text-center text-sm text-slate-400">No forecast data.</li>`;
+          return;
+        }
+        list.innerHTML = data.map(f => {
+          let icon = '📊', trendColor = 'text-slate-500';
+          if (f.message.includes('UP!')) { icon = '📈'; trendColor = 'text-emerald-600'; }
+          if (f.message.includes('DOWN')) { icon = '📉'; trendColor = 'text-red-500'; }
+          if (f.message.includes('flatlined')) { icon = '⚠️'; trendColor = 'text-amber-500'; }
+          return `
+            <li class="px-5 py-3.5 flex items-start gap-3 hover:bg-slate-50 transition-colors">
+              <span class="text-xl leading-none mt-0.5 shrink-0">${icon}</span>
+              <div class="min-w-0">
+                <p class="text-sm font-semibold text-slate-900">${sanitize(f.product_name)}
+                  <span class="text-[11px] font-normal text-slate-400 ml-1">${sanitize(f.sku_id)}</span>
+                </p>
+                <p class="text-xs mt-0.5 ${trendColor}">${sanitize(f.message)}</p>
+              </div>
+            </li>`;
+        }).join('');
+      } catch (e) { console.error('Forecast error:', e); }
+    }
+
+    async function loadABC() {
+      try {
+        const res = await fetch('/api/analytics/abc');
+        const data = await res.json();
+        const tbody = document.getElementById('abcBody');
+        if (!data.length) {
+          tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-6 text-center text-sm text-slate-400">No data.</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.map((item, i) => {
+          const rowBg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40';
+          const badge =
+            item.category === 'A' ? `<span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-50 text-emerald-700">Class A</span>` :
+              item.category === 'B' ? `<span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold bg-amber-50 text-amber-700">Class B</span>` :
+                `<span class="inline-flex px-2 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600">Class C</span>`;
+          return `
+            <tr class="${rowBg} hover:bg-blue-50/20 transition-colors">
+              <td class="px-4 py-2.5 text-sm font-medium text-slate-900">${sanitize(item.product_name)}</td>
+              <td class="px-4 py-2.5 text-right text-sm tabular-nums text-slate-700">$${item.revenue.toFixed(2)}</td>
+              <td class="px-4 py-2.5 text-center">${badge}</td>
+            </tr>`;
+        }).join('');
+      } catch (e) { console.error('ABC error:', e); }
+    }
+
+    async function loadDeadStock() {
+      try {
+        const res = await fetch('/api/analytics/dead_stock');
+        const data = await res.json();
+        const tbody = document.getElementById('deadBody');
+        if (!data.length) {
+          tbody.innerHTML = `<tr><td colspan="3" class="px-4 py-6 text-center text-sm text-emerald-600 font-semibold">No dead stock detected ✓</td></tr>`;
+          return;
+        }
+        tbody.innerHTML = data.map((item, i) => {
+          const rowBg = i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40';
+          return `
+            <tr class="${rowBg} hover:bg-red-50/30 transition-colors">
+              <td class="px-4 py-2.5 text-sm font-medium text-slate-900">${sanitize(item.product_name)}</td>
+              <td class="px-4 py-2.5 text-center text-sm font-bold tabular-nums text-red-600">${item.qty_on_hand} units</td>
+              <td class="px-4 py-2.5 text-right text-sm tabular-nums text-slate-600">$${item.capital_tied_up.toFixed(2)}</td>
+            </tr>`;
+        }).join('');
+      } catch (e) { console.error('Dead stock error:', e); }
+    }
+
+    async function loadRiskCount() {
+      try {
+        const res = await fetch('/api/summary');
+        const data = await res.json();
+        document.getElementById('risk-count').textContent = data.critical ?? 0;
+      } catch (e) { console.error('Summary error:', e); }
+    }
+
+    function exportReport() {
+      const rows = [['Metric', 'Value']];
+      document.querySelectorAll('#abcBody tr').forEach(tr => {
+        const cells = [...tr.querySelectorAll('td')].map(td => td.textContent.trim());
+        if (cells.length) rows.push(cells);
+      });
+      const csv = rows.map(r => r.join(',')).join('\n');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'fullstock_analytics.csv'; a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadSalesChart();
+      loadForecasts();
+      loadABC();
+      loadDeadStock();
+      loadRiskCount();
+      loadInventoryData();
+    });
+
+    let sawtoothChartInstance = null;
+    let allStocksData = [];
+
+    function switchTab(tabId) {
+      document.getElementById('tab-overview').classList.toggle('hidden', tabId !== 'overview');
+      document.getElementById('tab-inventory').classList.toggle('hidden', tabId !== 'inventory');
+
+      const headerControls = document.getElementById('header-controls');
+      if (headerControls) {
+        headerControls.classList.toggle('hidden', tabId !== 'overview');
+      }
+
+      const btnO = document.getElementById('tab-btn-overview');
+      const btnI = document.getElementById('tab-btn-inventory');
+
+      if (tabId === 'overview') {
+        btnO.className = "whitespace-nowrap pb-3 pt-4 px-1 border-b-2 border-slate-900 font-semibold text-sm text-slate-900";
+        btnI.className = "whitespace-nowrap pb-3 pt-4 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300";
+      } else {
+        btnI.className = "whitespace-nowrap pb-3 pt-4 px-1 border-b-2 border-slate-900 font-semibold text-sm text-slate-900";
+        btnO.className = "whitespace-nowrap pb-3 pt-4 px-1 border-b-2 border-transparent font-medium text-sm text-slate-500 hover:text-slate-700 hover:border-slate-300";
+        if (!allStocksData.length) loadInventoryData();
+      }
+    }
+
+    async function loadInventoryData() {
+      try {
+        const res = await fetch('/api/stocks');
+        allStocksData = await res.json();
+        const select = document.getElementById('sku-select');
+        select.innerHTML = allStocksData.map(s => `<option value="${sanitize(s.sku_id)}">${sanitize(s.product_name)}</option>`).join('');
+        if (allStocksData.length > 0) renderInventoryControl();
+      } catch (e) { console.error(e); }
+    }
+
+    function renderInventoryControl() {
+      const skuId = document.getElementById('sku-select').value;
+      const sku = allStocksData.find(s => s.sku_id === skuId);
+      if (!sku) return;
+
+      document.getElementById('inv-rop').textContent = sku.rop + " units";
+      document.getElementById('inv-eoq').textContent = sku.eoq + " units";
+
+      drawSawtooth(sku);
+    }
+
+    function drawSawtooth(sku) {
+      const ctx = document.getElementById('sawtoothChart').getContext('2d');
+      if (sawtoothChartInstance) sawtoothChartInstance.destroy();
+
+      const Q = sku.eoq || 100;
+      const ROP = sku.rop || 20;
+      const SS = sku.safety_stock || 0;
+      const d = sku.daily_demand || ((ROP - SS) / (sku.lead_time_days || 7)) || 5;
+      const LT = sku.lead_time_days || 7;
+
+      let cycle_time = Q / d;
+      if (!isFinite(cycle_time) || cycle_time <= 0) cycle_time = 30;
+
+      const points = [];
+      for (let i = 0; i < 3; i++) {
+        const t_start = i * cycle_time;
+        const t_end = (i + 1) * cycle_time;
+        const t_order = t_end - LT;
+
+        points.push({ x: t_start, y: Q + SS });
+        if (t_order > t_start) {
+          points.push({ x: t_order, y: ROP });
+        }
+        points.push({ x: t_end, y: Math.max(0, SS) });
+        points.push({ x: t_end, y: Q + SS });
+      }
+
+      const ropPoints = [
+        { x: 0, y: ROP },
+        { x: 3 * cycle_time, y: ROP }
+      ];
+
+      sawtoothChartInstance = new Chart(ctx, {
+        type: 'scatter',
+        data: {
+          datasets: [
+            {
+              label: 'Inventory Level',
+              data: points,
+              borderColor: '#0284c7',
+              backgroundColor: '#0284c7',
+              showLine: true,
+              stepped: false,
+              tension: 0,
+              borderWidth: 2,
+              pointRadius: 0
+            },
+            {
+              label: 'Reorder Point (R)',
+              data: ropPoints,
+              borderColor: '#ef4444',
+              borderDash: [5, 5],
+              showLine: true,
+              pointRadius: 0,
+              borderWidth: 1.5
+            }
+          ]
+        },
+        options: {
+          animation: {
+            x: {
+              type: 'number',
+              easing: 'linear',
+              duration: 20,
+              from: NaN,
+              delay: (ctx) => {
+                return ctx.type === 'data' ? ctx.index * 20 : 0;
+              }
+            },
+            y: {
+              type: 'number',
+              easing: 'linear',
+              duration: 20,
+              delay: (ctx) => {
+                return ctx.type === 'data' ? ctx.index * 20 : 0;
+              }
+            }
+          },
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              type: 'linear',
+              title: { display: true, text: 'Time (Days)' },
+              grid: { display: false }
+            },
+            y: {
+              title: { display: true, text: 'Inventory Level' },
+              beginAtZero: true,
+              max: Q + SS + (Q * 0.1)
+            }
+          },
+          plugins: {
+            legend: { display: true },
+            tooltip: { enabled: false }
+          }
+        }
+      });
+    }
+  </script>
+
+</body>
+
+</html>
